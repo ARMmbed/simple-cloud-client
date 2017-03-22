@@ -9,7 +9,7 @@ A sane and simple way of connecting mbed OS 5 devices to mbed Cloud. It's design
 
 This library is a simpler interface to mbed Cloud Client, making it trivial to expose sensors, actuators and other variables to the cloud. It does not require you to change how you write your code. You can take any local variable, swap it out for a call to Simple Cloud Client, and the variable will automatically be synchronised with mbed Cloud.
 
-[**Example program here (including instructions for firmware updates)**](https://github.com/armmbed/simple-cloud-client-example).
+[**Example program here (including instructions for firmware updates)**](https://github.com/armmbed/simple-cloud-client-example)
 
 ## Usage
 
@@ -83,7 +83,7 @@ int main() {
 You can define a new variable by a call to `client.define_resource`. This function takes five arguments:
 
 1.  `path` - The URL on which your variable is exposed in mbed Cloud. Needs to be three (3) segments, split by a slash (/) in the form of 'sensor/0/value'. The second segment always needs to be numeric.
-2.  `defaultValue` - The default value of the variable. Needs to be either a string or an integer. Depending on the type that you pass in here the type of the variable is defined.
+2.  `defaultValue` - The default value of the variable. Needs to be either a string, an integer or a float. Depending on the type that you pass in here the type of the variable is defined.
 3.  `operation` - Some variables might be read-only or write-only (seen from the cloud). Use the operation to define these constraints. It's of type [M2MBase::Operation](https://docs.mbed.com/docs/mbed-client-guide/en/latest/api/classM2MBase.html#a8ddff21b51b1283c4f0fe463e5a2a6ee). Default is GET_PUT_ALLOWED.
 4.  `observable` - If set to false, cloud applications cannot subscribe to updates on this variable. Default is true.
 5.  `callback` - Function pointer which is called whenever the value of the variable is changed from the cloud.
