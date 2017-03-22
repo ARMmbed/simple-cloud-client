@@ -182,7 +182,6 @@ public:
         options.Type = "Type_String";
         options.ModelNumber = "ModelNumber_String";
         options.SerialNumber = "SerialNumber_String";
-        options.DeviceType = "test";
 
         return options;
     }
@@ -225,7 +224,11 @@ public:
             callback(this, &SimpleMbedClientBase::keep_alive));
 
         // Connect to mbed Cloud
-        client->setup(iface);
+        bool cloud_setup = client->setup(iface);
+        if (!cloud_setup) {
+            smc_debug_msg("[SMC] mbed Cloud Client setup failed\n");
+            return false;
+        }
 
         // So this apparently only works if you set it after setup() was called...
 #ifdef MBED_CLOUD_CLIENT_SUPPORT_UPDATE
@@ -273,10 +276,14 @@ public:
         client->on_registered(fn);
     }
 
-    // @todo
-    // void on_registered(Callback<void()> fp) {
-    //     client->on_registered(fp);
-    // }
+    void on_registered(Callback<void()> fp) {
+        // We need a copy of the callback. The original callback might go out of scope.
+        // @todo, do we need to clear this? It's actually meant to live until the end of the program... But it's not nice to alloc and never free.
+        Callback<void()>* copy = new Callback<void()>(fp);
+
+        // Callback::call is const, which on_registered does not like. Cast it to non-const.
+        client->on_registered(copy, (void (Callback<void()>::*)(void))&Callback<void()>::call);
+    }
 
     template<typename T>
     void on_registered(T *object, void (T::*member)(void)) {
@@ -287,17 +294,21 @@ public:
         client->on_unregistered(fn);
     }
 
-    // @todo
-    // void on_unregistered(Callback<void()> fp) {
-    //     client->on_unregistered(fp);
-    // }
+    void on_unregistered(Callback<void()> fp) {
+        // We need a copy of the callback. The original callback might go out of scope.
+        // @todo, do we need to clear this? It's actually meant to live until the end of the program... But it's not nice to alloc and never free.
+        Callback<void()>* copy = new Callback<void()>(fp);
+
+        // Callback::call is const, which on_registered does not like. Cast it to non-const.
+        client->on_unregistered(copy, (void (Callback<void()>::*)(void))&Callback<void()>::call);
+    }
 
     template<typename T>
     void on_unregistered(T *object, void (T::*member)(void)) {
         client->on_unregistered(object, member);
     }
 
-    bool define_function(const char* route, Event<void(void*)> ev) {
+    bool define_function(const char* route, Callback<void(void*)> ev) {
         if (!define_resource_internal(route, string(), M2MBase::POST_ALLOWED, false)) {
             return false;
         }
@@ -308,12 +319,12 @@ public:
             return false;
         }
 
-        // We need a copy of the event. The original event might go out of scope.
+        // We need a copy of the callback. The original callback might go out of scope.
         // @todo, do we need to clear this? It's actually meant to live until the end of the program... But it's not nice to alloc and never free.
-        Event<void(void*)>* copy = new Event<void(void*)>(ev);
+        Callback<void(void*)>* copy = new Callback<void(void*)>(ev);
 
-        // Event::call is const, which FP1 does not like. Cast it to non-const.
-        FP1<void, void*> fp(copy, (void (events::Event<void(void*)>::*)(void*))&Event<void(void*)>::call);
+        // Callback::call is const, which FP1 does not like. Cast it to non-const.
+        FP1<void, void*> fp(copy, (void (Callback<void(void*)>::*)(void*))&Callback<void(void*)>::call);
 
         resources[route_str]->set_execute_function(fp);
         return true;
