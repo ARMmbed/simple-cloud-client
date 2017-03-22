@@ -9,7 +9,7 @@ A sane and simple way of connecting mbed OS 5 devices to mbed Cloud. It's design
 
 This library is a simpler interface to mbed Cloud Client, making it trivial to expose sensors, actuators and other variables to the cloud. It does not require you to change how you write your code. You can take any local variable, swap it out for a call to Simple Cloud Client, and the variable will automatically be synchronised with mbed Cloud.
 
-This library is a port of [simple-mbed-client](https://developer.mbed.org/teams/sandbox/code/simple-mbed-client/).
+[**Example program here (including instructions for firmware updates)**](https://github.com/armmbed/simple-cloud-client-example).
 
 ## Usage
 
