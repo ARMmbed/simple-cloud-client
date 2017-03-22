@@ -14,11 +14,8 @@ def run(args, cwd):
     exitcode = proc.returncode
 
     if exitcode != 0:
-        print("\n'%s' failed with code %d (in %s)" % (args.join(" "), code, cwd))
+        print("\n'%s' failed with code %d (in %s)" % (" ".join(args), exitcode, cwd))
         print(err.decode("ascii"))
-
-        if os.path.isdir(certs_dir):
-            shutil.rmtree(certs_dir)
 
         sys.exit(exitcode)
 
@@ -26,8 +23,8 @@ def run(args, cwd):
 
 # vars
 tools_dir = os.path.dirname(os.path.realpath(__file__))
-certs_dir = os.path.realpath(os.path.join(tools_dir, "..", "certs"))
-update_cert_file = os.path.realpath(os.path.join(tools_dir, "..", "update_default_resources.c"))
+certs_dir = os.path.realpath(os.path.join(tools_dir, "../..", "certs"))
+update_cert_file = os.path.realpath(os.path.join(tools_dir, "../..", "update_default_resources.c"))
 
 # arguments
 

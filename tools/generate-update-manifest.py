@@ -11,11 +11,8 @@ def run(args, cwd):
     exitcode = proc.returncode
 
     if exitcode != 0:
-        print("\n'%s' failed with code %d (in %s)" % (args.join(" "), code, cwd))
+        print("\n'%s' failed with code %d (in %s)" % (" ".join(args), exitcode, cwd))
         print(err.decode("ascii"))
-
-        if os.path.isdir(certs_dir):
-            shutil.rmtree(certs_dir)
 
         sys.exit(exitcode)
 
@@ -23,9 +20,8 @@ def run(args, cwd):
 
 # vars
 tools_dir = os.path.dirname(os.path.realpath(__file__))
-root_dir = os.path.realpath(os.path.join(tools_dir, ".."))
+root_dir = os.path.realpath(os.path.join(tools_dir, "../.."))
 certs_dir = os.path.realpath(os.path.join(root_dir, "certs"))
-build_dir = os.path.realpath(os.path.join(root_dir, "certs"))
 
 # parse args
 parser = argparse.ArgumentParser()
@@ -54,7 +50,7 @@ with open(os.path.join(root_dir, "combined-manifest.json"), "w") as manifest_fil
 
 print("[2/3] Creating manifest")
 
-run(["manifest-tool", "create", "-i", "combined-manifest.json", "-o", "combined.manifest", "-k", "certs/key.pem"], root_dir)
+run(["manifest-tool", "create", "-i", "combined-manifest.json", "-o", "simple-cloud-client-example.manifest", "-k", "certs/key.pem"], root_dir)
 
 os.remove(os.path.join(root_dir, "combined-manifest.json"))
 
