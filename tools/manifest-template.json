@@ -1,0 +1,11 @@
+{
+    "cryptoMode" : 2,
+    "vendorGuid" : "",
+    "classGuid" : "",
+    "fwUri" : "",
+    "fwFile" : "",
+    "description" : "",
+    "certificates": [
+      { "file": ""}
+    ]
+}

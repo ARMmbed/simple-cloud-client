@@ -1,0 +1,9 @@
+{
+    "access-key": "",
+    "url": "https://api.mbedcloud.com/v2",
+    "port": "443",
+    "resource": "/5/0/0",
+    "devices": [
+        ""
+    ]
+}
