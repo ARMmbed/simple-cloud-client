@@ -41,7 +41,6 @@ struct MbedClientOptions {
     const char* Type;
     const char* ModelNumber;
     const char* SerialNumber;
-    const char* DeviceType;
 };
 
 
