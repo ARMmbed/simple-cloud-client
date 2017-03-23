@@ -474,18 +474,21 @@ private:
     }
 
     virtual void value_updated(M2MBase *base, M2MBase::BaseType type) {
-        smc_debug_msg("[SMC] PUT Request Received, type=%d\n", type);
         if (strcmp(base->uri_path(), "") != 0) {
-            smc_debug_msg("[SMC] PUT came in for %s\n", base->uri_path());
-
             resource_updated(string(base->uri_path()));
         }
     }
 
     void resource_updated(string uri) {
-        if (updateValues.count(uri) == 0) return;
+        if (updateValues.count(uri) == 0) {
+            smc_debug_msg("[SMC] PUT came in for %s\n", uri.c_str());
+            return;
+        }
 
         string v = get(uri);
+
+        smc_debug_msg("[SMC] PUT came in for %s, new value is %s\n", uri.c_str(), v.c_str());
+
         if (v.empty()) return;
 
         // Schedule this on the other thread, to avoid blocking this thread
