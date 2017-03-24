@@ -33,10 +33,6 @@ if not os.path.isfile(os.path.join(certs_dir, "manifest-base.json")):
     print("Could not find manifest-base.json in certs directory. Did you not run 'generate-update-certs.py'?")
     sys.exit(1)
 
-if not os.path.isfile(os.path.join(root_dir, "combined.bin")):
-    print("Could not find combined.bin in '%s'. Did you compile the application and combine it with bootloader?" % root_dir)
-    sys.exit(1)
-
 print("[1/3] Generating manifest JSON file")
 
 with open(os.path.join(certs_dir, "manifest-base.json")) as manifest_base:

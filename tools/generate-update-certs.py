@@ -3,9 +3,9 @@ import os
 import pprint
 import sys
 import re
-import shutil
 import argparse
 import uuid
+import struct
 from random import randint
 
 def run(args, cwd):
@@ -48,7 +48,7 @@ if os.path.isfile(update_cert_file):
 # 1. install the dependencies for manifest-tool...
 print("[1/6] Installing manifest-tool dependencies")
 
-out = run(["python3", "setup.py", "install"], os.path.join(tools_dir, "manifest-tool"))
+out = run(["python", "setup.py", "install"], os.path.join(tools_dir, "manifest-tool"))
 
 # 2. creating certificate
 print("[2/6] Creating certificates")
@@ -84,9 +84,9 @@ if args.device_id:
 else:
     device_uuid = uuid.uuid4()
 
-vendor_id = vendor_uuid.bytes
-class_id = class_uuid.bytes
-device_id = device_uuid.bytes
+vendor_id = struct.unpack("BBBBBBBBBBBBBBBB", vendor_uuid.bytes)
+class_id = struct.unpack("BBBBBBBBBBBBBBBB", class_uuid.bytes)
+device_id = struct.unpack("BBBBBBBBBBBBBBBB", device_uuid.bytes)
 
 update_default_resources = """
 #ifdef MBED_CLOUD_CLIENT_USER_CONFIG_FILE
