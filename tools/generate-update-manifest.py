@@ -21,6 +21,7 @@ def run(args, cwd):
 # vars
 tools_dir = os.path.dirname(os.path.realpath(__file__))
 root_dir = os.path.realpath(os.path.join(tools_dir, "../.."))
+manifest_name = os.path.relpath(root_dir, os.path.join(root_dir, '..')) + ".manifest"
 certs_dir = os.path.realpath(os.path.join(root_dir, "certs"))
 
 # parse args
@@ -46,8 +47,8 @@ with open(os.path.join(root_dir, "combined-manifest.json"), "w") as manifest_fil
 
 print("[2/3] Creating manifest")
 
-run(["manifest-tool", "create", "-i", "combined-manifest.json", "-o", "simple-cloud-client-example.manifest", "-k", "certs/key.pem"], root_dir)
+run(["manifest-tool", "create", "-i", "combined-manifest.json", "-o", manifest_name, "-k", "certs/key.pem"], root_dir)
 
 os.remove(os.path.join(root_dir, "combined-manifest.json"))
 
-print("[3/3] Finished. Your manifest is generated at '%s/simple-cloud-client-example.manifest'" % root_dir)
+print("[3/3] Finished. Your manifest is generated at '%s/%s'" % (root_dir, manifest_name))
