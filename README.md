@@ -1,4 +1,4 @@
-# Simple Cloud Client
+## Simple Cloud Client
 
 A sane and simple way of connecting mbed OS 5 devices to mbed Cloud. It's designed to:
 
@@ -11,7 +11,7 @@ This library is a simpler interface to mbed Cloud Client, making it trivial to e
 
 [**Example program here (including instructions for firmware updates)**](https://github.com/armmbed/simple-cloud-client-example)
 
-## Usage
+### Usage
 
 1. Add this library to your project:
 
@@ -52,7 +52,7 @@ This library is a simpler interface to mbed Cloud Client, making it trivial to e
     }
     ```
 
-## Defining cloud variables
+### Defining cloud variables
 
 A cloud variable acts like a normal variable, but automatically syncs its value with mbed Cloud. You can create such a variable via a call to `client.define_resource()`. For example, this is how you expose a simple light sensor to the cloud.
 
@@ -78,7 +78,7 @@ int main() {
 }
 ```
 
-### SimpleResource* API
+#### SimpleResource* API
 
 You can define a new variable by a call to `client.define_resource`. This function takes five arguments:
 
@@ -107,7 +107,7 @@ name = "pietje";
 // are all valid
 ```
 
-## Defining functions
+### Defining functions
 
 You can define functions, which do not have a value, but can just be invoked from the cloud, by a call to `client.define_function`. This function takes two arguments:
 
@@ -124,7 +124,7 @@ void play(void* data) {
 client.define_function("music/0/play", &play);
 ```
 
-## Accessing the underlying M2MResource
+### Accessing the underlying M2MResource
 
 If you need access to the underlying [M2MResource](https://docs.mbed.com/docs/mbed-client-guide/en/latest/api/classM2MResource.html) you can do so by calling `get_resource` on a variable, or by calling `client.get_resource` if it's a function.
 
@@ -138,7 +138,7 @@ M2MResource* ledResource = led.get_resource();
 M2MResource* toggleResource = client.get_resource("led/0/toggle");
 ```
 
-## Printing variables
+### Printing variables
 
 Unfortunately `printf` is kind of dumb, and does not automatically cast the variables. If you want to print any of the Simple Cloud Client variables you'll need to cast yourself.
 
@@ -148,7 +148,7 @@ SimpleResourceInt led = client.define_resource("led/0/value", true);
 printf("Value is currently %d\n", static_cast<int>(led));
 ```
 
-## Event Queue
+### Event Queue
 
 Simple Cloud Client uses an [mbed-events EventQueue](https://github.com/ARMmbed/mbed-os/tree/master/events) - running on a separate RTOS thread - to handle incoming events without blocking the main loop. Both the thread and event queue are created when initializing the library. You can override this behavior by providing your own event queue. In this case no thread is created.
 
