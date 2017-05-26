@@ -27,6 +27,7 @@
 #include "mbed-client/m2minterface.h"
 #include "mbed-trace/mbed_trace.h"
 #include "mbed_cloud_client_user_config.h"
+#include "factory_configurator_client.h"
 
 #ifdef MBED_CLOUD_CLIENT_SUPPORT_UPDATE
 #include "update_ui_example.h"
@@ -47,36 +48,6 @@ struct MbedClientOptions {
 static void mbed_cloud_error(int error_code) {
     const char *error;
     switch(error_code) {
-        case MbedCloudClient::IdentityError:
-            error = "MbedCloudClient::IdentityError";
-            break;
-        case MbedCloudClient::IdentityInvalidParameter:
-            error = "MbedCloudClient::IdentityInvalidParameter";
-            break;
-        case MbedCloudClient::IdentityOutofMemory:
-            error = "MbedCloudClient::IdentityOutofMemory";
-            break;
-        case MbedCloudClient::IdentityProvisioningError:
-            error = "MbedCloudClient::IdentityProvisioningError";
-            break;
-        case MbedCloudClient::IdentityInvalidSessionID:
-            error = "MbedCloudClient::IdentityInvalidSessionID";
-            break;
-        case MbedCloudClient::IdentityNetworkError:
-            error = "MbedCloudClient::IdentityNetworkError";
-            break;
-        case MbedCloudClient::IdentityInvalidMessageType:
-            error = "MbedCloudClient::IdentityInvalidMessageType";
-            break;
-        case MbedCloudClient::IdentityInvalidMessageSize:
-            error = "MbedCloudClient::IdentityInvalidMessageSize";
-            break;
-        case MbedCloudClient::IdentityCertOrKeyNotFound:
-            error = "MbedCloudClient::IdentityCertOrKeyNotFound";
-            break;
-        case MbedCloudClient::IdentityRetransmissionError:
-            error = "MbedCloudClient::IdentityRetransmissionError";
-            break;
         case MbedCloudClient::ConnectErrorNone:
             error = "MbedCloudClient::ConnectErrorNone";
             break;
@@ -120,6 +91,9 @@ static void mbed_cloud_error(int error_code) {
         case MbedCloudClient::UpdateWarningCertificateNotFound:
             error = "MbedCloudClient::UpdateWarningCertificateNotFound";
             break;
+        case MbedCloudClient::UpdateWarningIdentityNotFound:
+            error = "MbedCloudClient::UpdateWarningIdentityNotFound";
+            break;
         case MbedCloudClient::UpdateWarningCertificateInvalid:
             error = "MbedCloudClient::UpdateWarningCertificateInvalid";
             break;
@@ -138,12 +112,22 @@ static void mbed_cloud_error(int error_code) {
         case MbedCloudClient::UpdateWarningURINotFound:
             error = "MbedCloudClient::UpdateWarningURINotFound";
             break;
+        case MbedCloudClient::UpdateWarningUnknown:
+            error = "MbedCloudClient::UpdateWarningUnknown";
+            break;
+        case MbedCloudClient::UpdateErrorWriteToStorage:
+            error = "MbedCloudClient::UpdateErrorWriteToStorage";
+            break;
 #endif
         default:
             error = "UNKNOWN";
+            break;
     }
+
+    // @todo, should I keep registry state somewhere?
+
     printf("\n[SMC] Error occured: %s\n", error);
-    printf("\n[SMC] Error code: %d\n", error_code);
+    printf("[SMC] Error code: %d\n", error_code);
 }
 
 class SimpleResourceBase {
@@ -186,7 +170,42 @@ public:
     }
 
     bool init(NetworkInterface* iface, struct MbedClientOptions options) {
-        smc_debug_msg("[SMC] Initializing\r\n");
+        smc_debug_msg("[SMC] Initializing...\n");
+
+        fcc_status_e status = fcc_init();
+        if(status != FCC_STATUS_SUCCESS) {
+            smc_debug_msg("[SMC] fcc_init failed with status %d! - exit\n", status);
+            return false;
+        }
+
+        // Resets storage to an empty state.
+        // Use this function when you want to clear storage from all the factory-tool generated data and user data.
+        // After this operation device must be injected again by using factory tool or developer certificate.
+    #ifdef RESET_STORAGE
+        smc_debug_msg("[SMC] Resets storage to an empty state\n");
+        fcc_status_e delete_status = fcc_storage_delete();
+        if (delete_status != FCC_STATUS_SUCCESS) {
+            smc_debug_msg("[SMC] Failed to delete storage - %d\n", delete_status);
+        }
+    #endif
+
+    #ifdef MBED_CONF_APP_DEVELOPER_MODE
+        smc_debug_msg("[SMC] Start developer flow\n");
+        status = fcc_developer_flow();
+        if (status == FCC_STATUS_KCM_FILE_EXIST_ERROR) {
+            smc_debug_msg("[SMC] Developer credentials already exists\n");
+        } else if (status != FCC_STATUS_SUCCESS) {
+            smc_debug_msg("[SMC] Failed to load developer credentials - exit\n");
+            return false;
+        }
+    #endif
+        status = fcc_verify_device_configured_4mbed_cloud();
+        if (status != FCC_STATUS_SUCCESS) {
+            smc_debug_msg("[SMC] Device not configured for mbed Cloud - exit\n");
+            return false;
+        }
+
+        smc_debug_msg("[SMC] Registering...\n");
 
         // Create list of Objects to register
         M2MObjectList object_list;
@@ -217,6 +236,13 @@ public:
         client->on_error(&mbed_cloud_error);
 
         client->set_update_callback(this);
+
+        // @todo: shouldn't alloc this... But I need a copy...
+        Callback<void()>* internal_register_cb = new Callback<void()>(this, &SimpleMbedClientBase::client_registered);
+        client->on_registered(internal_register_cb, (void (Callback<void()>::*)(void))&Callback<void()>::call);
+
+        Callback<void()>* internal_unregister_cb = new Callback<void()>(this, &SimpleMbedClientBase::client_unregistered);
+        client->on_unregistered(internal_unregister_cb, (void (Callback<void()>::*)(void))&Callback<void()>::call);
 
         // Keep alive ticker (every 25 seconds)
         evQueue->call_every(MBED_CONF_SIMPLE_MBED_CLIENT_UPDATE_INTERVAL,
@@ -249,9 +275,8 @@ public:
     }
 
     bool setup(NetworkInterface* iface) {
-        smc_debug_msg("[SMC] In mbed_client_setup\r\n");
         if (client) {
-            smc_debug_msg("[SMC] [ERROR] mbed_client_setup called, but mbed_client is already instantiated\r\n");
+            smc_debug_msg("[SMC] [ERROR] mbed_client_setup called, but mbed_client is already instantiated\n");
             return false;
         }
 
@@ -262,7 +287,7 @@ public:
 
     bool setup(MbedClientOptions options, NetworkInterface* iface) {
         if (client) {
-            smc_debug_msg("[SMC] [ERROR] mbed_client_setup called, but mbed_client is already instantiated\r\n");
+            smc_debug_msg("[SMC] [ERROR] mbed_client_setup called, but mbed_client is already instantiated\n");
             return false;
         }
 
@@ -271,40 +296,12 @@ public:
         return init(iface, options);
     }
 
-    void on_registered(void(*fn)(void)) {
-        client->on_registered(fn);
-    }
-
     void on_registered(Callback<void()> fp) {
-        // We need a copy of the callback. The original callback might go out of scope.
-        // @todo, do we need to clear this? It's actually meant to live until the end of the program... But it's not nice to alloc and never free.
-        Callback<void()>* copy = new Callback<void()>(fp);
-
-        // Callback::call is const, which on_registered does not like. Cast it to non-const.
-        client->on_registered(copy, (void (Callback<void()>::*)(void))&Callback<void()>::call);
-    }
-
-    template<typename T>
-    void on_registered(T *object, void (T::*member)(void)) {
-        client->on_registered(object, member);
-    }
-
-    void on_unregistered(void(*fn)(void)) {
-        client->on_unregistered(fn);
+        registeredCallback = fp;
     }
 
     void on_unregistered(Callback<void()> fp) {
-        // We need a copy of the callback. The original callback might go out of scope.
-        // @todo, do we need to clear this? It's actually meant to live until the end of the program... But it's not nice to alloc and never free.
-        Callback<void()>* copy = new Callback<void()>(fp);
-
-        // Callback::call is const, which on_registered does not like. Cast it to non-const.
-        client->on_unregistered(copy, (void (Callback<void()>::*)(void))&Callback<void()>::call);
-    }
-
-    template<typename T>
-    void on_unregistered(T *object, void (T::*member)(void)) {
-        client->on_unregistered(object, member);
+        unregisteredCallback = fp;
     }
 
     bool define_function(const char* route, Callback<void(void*)> ev) {
@@ -314,7 +311,7 @@ public:
 
         string route_str(route);
         if (!resources.count(route_str)) {
-            smc_debug_msg("[SMC] [ERROR] Should be created, but no such route (%s)\r\n", route);
+            smc_debug_msg("[SMC] [ERROR] Should be created, but no such route (%s)\n", route);
             return false;
         }
 
@@ -336,7 +333,7 @@ public:
 
         string route_str(route);
         if (!resources.count(route_str)) {
-            smc_debug_msg("[SMC] [ERROR] Should be created, but no such route (%s)\r\n", route);
+            smc_debug_msg("[SMC] [ERROR] Should be created, but no such route (%s)\n", route);
             return false;
         }
 
@@ -351,7 +348,7 @@ public:
 
         string route_str(route);
         if (!resources.count(route_str)) {
-            smc_debug_msg("[SMC] [ERROR] Should be created, but no such route (%s)\r\n", route);
+            smc_debug_msg("[SMC] [ERROR] Should be created, but no such route (%s)\n", route);
             return false;
         }
         // No clue why this is not working?! It works with class member, but not with static function...
@@ -361,7 +358,7 @@ public:
 
     string get(string route_str) {
         if (!resources.count(route_str)) {
-            smc_debug_msg("[SMC] [ERROR] No such route (%s)\r\n", route_str.c_str());
+            smc_debug_msg("[SMC] [ERROR] No such route (%s)\n", route_str.c_str());
             return string();
         }
 
@@ -390,20 +387,20 @@ public:
 
     bool define_resource_internal(const char* route, string v, M2MBase::Operation opr, bool observable) {
         if (client) {
-            smc_debug_msg("[SMC] [ERROR] mbed_client_define_resource, Can only define resources before mbed_client_setup is called!\r\n");
+            smc_debug_msg("[SMC] [ERROR] mbed_client_define_resource, Can only define resources before mbed_client_setup is called!\n");
             return false;
         }
 
         vector<string> segments = parse_route(route);
         if (segments.size() != 3) {
-            smc_debug_msg("[SMC] [ERROR] mbed_client_define_resource, Route needs to have three segments, split by '/' (%s)\r\n", route);
+            smc_debug_msg("[SMC] [ERROR] mbed_client_define_resource, Route needs to have three segments, split by '/' (%s)\n", route);
             return false;
         }
 
         // segments[1] should be one digit and numeric
         char n = segments.at(1).c_str()[0];
         if (n < '0' || n > '9') {
-            smc_debug_msg("[SMC] [ERROR] mbed_client_define_resource, second route segment should be numeric, but was not (%s)\r\n", route);
+            smc_debug_msg("[SMC] [ERROR] mbed_client_define_resource, second route segment should be numeric, but was not (%s)\n", route);
             return false;
         }
 
@@ -438,7 +435,7 @@ public:
 
     M2MResource* get_resource(string route) {
         if (!resources.count(route)) {
-            smc_debug_msg("[SMC] [ERROR] No such route (%s)\r\n", route.c_str());
+            smc_debug_msg("[SMC] [ERROR] No such route (%s)\n", route.c_str());
             return NULL;
         }
 
@@ -499,7 +496,7 @@ private:
     // but always through the eventqueue
     void internal_set_str(string route_str, string v) {
         if (!resources.count(route_str)) {
-            smc_debug_msg("[SMC] [ERROR] No such route (%s)\r\n", route_str.c_str());
+            smc_debug_msg("[SMC] [ERROR] No such route (%s)\n", route_str.c_str());
             return;
         }
 
@@ -535,8 +532,40 @@ private:
 // Client is 300 seconds
 #if defined(MBED_CLOUD_CLIENT_TRANSPORT_MODE_UDP) || \
     defined(MBED_CLOUD_CLIENT_TRANSPORT_MODE_UDP_QUEUE)
-                client->keep_alive();
+        client->keep_alive();
 #endif
+    }
+
+    void client_registered() {
+        static const ConnectorClientEndpointInfo* endpoint = NULL;
+        if (endpoint == NULL) {
+            endpoint = client->endpoint_info();
+        }
+
+        smc_debug_msg("[SMC] Registered:\n");
+        if (endpoint) {
+#ifdef MBED_CONF_APP_DEVELOPER_MODE
+            smc_debug_msg("\tEndpoint Name: %s\n", endpoint->internal_endpoint_name.c_str());
+#else
+            smc_debug_msg("\tEndpoint Name: %s\n", endpoint->endpoint_name.c_str());
+#endif
+            smc_debug_msg("\tDevice Id: %s\n", endpoint->internal_endpoint_name.c_str());
+        }
+        else {
+            smc_debug_msg("\tCould not load endpoint info");
+        }
+
+        if (registeredCallback) {
+            registeredCallback();
+        }
+    }
+
+    void client_unregistered() {
+        smc_debug_msg("[SMC] Unregistered\n");
+
+        if (unregisteredCallback) {
+            unregisteredCallback();
+        }
     }
 
     MbedCloudClient* client;
@@ -550,6 +579,9 @@ private:
     bool debug;
 
     map<string, SimpleResourceBase*> updateValues;
+
+    Callback<void()> registeredCallback;
+    Callback<void()> unregisteredCallback;
 };
 
 class SimpleResourceString : public SimpleResourceBase {
@@ -732,8 +764,7 @@ public:
         bool observable,
         void(*onUpdate)(string))
     {
-        Callback<void(string)> fp;
-        fp.attach(onUpdate);
+        Callback<void(string)> fp = onUpdate;
         return define_resource(route, v, opr, observable, fp);
     }
 
@@ -750,8 +781,7 @@ public:
         string v,
         void(*onUpdate)(string))
     {
-        Callback<void(string)> fp;
-        fp.attach(onUpdate);
+        Callback<void(string)> fp = onUpdate;
         return define_resource(route, v, M2MBase::GET_PUT_ALLOWED, true, fp);
     }
 
@@ -785,8 +815,7 @@ public:
         bool observable,
         void(*onUpdate)(int))
     {
-        Callback<void(int)> fp;
-        fp.attach(onUpdate);
+        Callback<void(int)> fp = onUpdate;
         return define_resource(route, v, opr, observable, fp);
     }
 
@@ -803,8 +832,7 @@ public:
         int v,
         void(*onUpdate)(int))
     {
-        Callback<void(int)> fp;
-        fp.attach(onUpdate);
+        Callback<void(int)> fp = onUpdate;
         return define_resource(route, v, M2MBase::GET_PUT_ALLOWED, true, fp);
     }
 
@@ -838,8 +866,7 @@ public:
         bool observable,
         void(*onUpdate)(float))
     {
-        Callback<void(float)> fp;
-        fp.attach(onUpdate);
+        Callback<void(float)> fp = onUpdate;
         return define_resource(route, v, opr, observable, fp);
     }
 
@@ -856,8 +883,7 @@ public:
         float v,
         void(*onUpdate)(float))
     {
-        Callback<void(float)> fp;
-        fp.attach(onUpdate);
+        Callback<void(float)> fp = onUpdate;
         return define_resource(route, v, M2MBase::GET_PUT_ALLOWED, true, fp);
     }
 };

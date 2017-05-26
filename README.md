@@ -19,11 +19,11 @@ This library is a simpler interface to mbed Cloud Client, making it trivial to e
     $ mbed add git@github.com:ARMmbed/simple-cloud-client.git
     ```
 
-1. Add your mbed Cloud certificate to your project (`identity_dev_security.c` file).
+1. Add your mbed Cloud certificate to your project (`mbed_cloud_dev_credentials.c` file).
 1. Generate an update certificate via:
 
     ```
-    $ python3 simple-cloud-client/tools/generate-update-certs.py -v yourdomain.com -m your-device-model
+    $ manifest-tool init -d "<company domain name>" -m "<product model ID>" -q --force
     ```
 
 1. Reference the library from your main.cpp file:

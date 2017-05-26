@@ -2,6 +2,7 @@
 
 from os import path
 import hashlib, zlib, struct
+import time
 
 '''
 define FIRMWARE_HEADER_MAGIC   0x5a51b3d4UL
@@ -11,7 +12,7 @@ typedef struct FirmwareHeader {
     uint32_t version;                       /** Revision number for this generic metadata header. */
     uint32_t checksum;                      /** A checksum of this header. This field should be considered to be zeroed out for
                                              *  the sake of computing the checksum. */
-    uint32_t totalSize;                     /** Total space (in bytes) occupied by the firmware BLOB, including headers and any padding. */
+    uint32_t totalSize;                     /** Total space (in bytes) occupied by the firmware BLOB. */
     uint64_t firmwareVersion;               /** Version number for the accompanying firmware. Larger numbers imply more preferred (recent)
                                              *  versions. This defines the selection order when multiple versions are available. */
     uint8_t  firmwareSHA256[SIZEOF_SHA256]; /** A SHA-2 using a block-size of 256-bits of the firmware, including any firmware-padding. */
@@ -22,16 +23,18 @@ typedef struct FirmwareHeader {
 SIZEOF_SHA256 = 256/8
 FIRMWARE_HEADER_MAGIC = 0x5a51b3d4
 FIRMWARE_HEADER_VERSION = 1
-firmwareVersion = 0
 FirmwareHeader_t = "4IQ{}s".format(SIZEOF_SHA256) # 4*unsigned int, 1*unsigned long long, 1*bytes
-FirmwareHeaderSize = 56
 
-def create_header(app_blob):
+def create_header(app_blob, firmwareVersion):
     # calculate the hash of the application
     firmwareSHA256 = hashlib.sha256(app_blob)
 
     # calculate the total size which is defined as the application size + metadata header
-    totalSize = len(app_blob) + FirmwareHeaderSize
+    totalSize = len(app_blob)
+
+    print ('imageSize:    {}'.format(totalSize))
+    print ('imageHash:    {}'.format(''.join(['{:0>2x}'.format(ord(c)) for c in firmwareSHA256.digest()])))
+    print ('imageversion: {}'.format(firmwareVersion))
 
     # set checksum to zero and calculate the checksum of the header
     checksum = 0
@@ -56,9 +59,10 @@ def create_header(app_blob):
     return FirmwareHeader
 
 
-def combine(bootloader_blob, app_blob, app_offset, hdr_offset, output):
+def combine(bootloader_blob, app_blob, app_offset, hdr_offset, output, version):
+
     # create header to go with the application binary
-    FirmwareHeader = create_header(app_blob)
+    FirmwareHeader = create_header(app_blob, version)
 
     # write the bootloader first
     offset = 0
@@ -103,6 +107,8 @@ if __name__ == '__main__':
                         help='offset of the firmware metadata header')
     parser.add_argument('-o', '--output',        type=argparse.FileType('wb'), required=True,
                         help='output combined file path')
+    parser.add_argument('-s', '--set-version',   type=int,                     required=False,
+                        help='set version number', default=int(time.time()))
 
     # workaround for http://bugs.python.org/issue9694
     parser._optionals.title = "arguments"
@@ -117,7 +123,7 @@ if __name__ == '__main__':
     args.app.close()
 
     # combine applicaiton and bootloader adding metadata info
-    combine(bootloader_blob, app_blob, args.app_offset, args.header_offset, args.output)
+    combine(bootloader_blob, app_blob, args.app_offset, args.header_offset, args.output, args.set_version)
 
     # close output file
     output_fn = path.abspath(args.output.name)

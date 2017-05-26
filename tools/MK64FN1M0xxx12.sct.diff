@@ -1,23 +1,13 @@
 diff --git a/targets/TARGET_Freescale/TARGET_MCUXpresso_MCUS/TARGET_MCU_K64F/device/TOOLCHAIN_ARM_STD/MK64FN1M0xxx12.sct b/targets/TARGET_Freescale/TARGET_MCUXpresso_MCUS/TARGET_MCU_K64F/device/TOOLCHAIN_ARM_STD/MK64FN1M0xxx12.sct
-index edc93bb..1b815a2 100644
+index 66557d0..d0eee50 100644
 --- a/targets/TARGET_Freescale/TARGET_MCUXpresso_MCUS/TARGET_MCU_K64F/device/TOOLCHAIN_ARM_STD/MK64FN1M0xxx12.sct
 +++ b/targets/TARGET_Freescale/TARGET_MCUXpresso_MCUS/TARGET_MCU_K64F/device/TOOLCHAIN_ARM_STD/MK64FN1M0xxx12.sct
-@@ -60,14 +60,14 @@
-   #define __ram_vector_table_size__    0x00000000
+@@ -61,7 +61,7 @@
  #endif
  
--#define m_interrupts_start             0x00000000
-+#define m_interrupts_start             0x00014100
- #define m_interrupts_size              0x00000400
+ #if !defined(MBED_APP_START)
+-  #define MBED_APP_START 0
++  #define MBED_APP_START 0x20400
+ #endif
  
--#define m_flash_config_start           0x00000400
-+#define m_flash_config_start           0x00014500
- #define m_flash_config_size            0x00000010
- 
--#define m_text_start                   0x00000410
--#define m_text_size                    0x000FFBF0
-+#define m_text_start                   0x00014510
-+#define m_text_size                    0x0006BAF0
- 
- #define m_interrupts_ram_start         0x1FFF0000
- #define m_interrupts_ram_size          __ram_vector_table_size__
+ #if !defined(MBED_APP_SIZE)

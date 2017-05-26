@@ -24,10 +24,15 @@
 extern C12832* lcd;
 #endif
 
-extern MbedCloudClient client;
+static MbedCloudClient* _client;
 
 #ifdef ARM_UPDATE_CLIENT_VERSION_VALUE
 #if ARM_UPDATE_CLIENT_VERSION_VALUE > 101000
+void update_ui_set_cloud_client(MbedCloudClient* client)
+{
+    _client = client;
+}
+
 void update_authorize(int32_t request)
 {
     switch (request)
@@ -44,7 +49,7 @@ void update_authorize(int32_t request)
         case MbedCloudClient::UpdateRequestDownload:
             printf("Firmware download requested\r\n");
             printf("Authorization granted\r\n");
-            client.update_authorize(MbedCloudClient::UpdateRequestDownload);
+            _client->update_authorize(MbedCloudClient::UpdateRequestDownload);
 
 #ifdef MBED_APPLICATION_SHIELD
             /* clear screen */
@@ -62,7 +67,7 @@ void update_authorize(int32_t request)
         case MbedCloudClient::UpdateRequestInstall:
             printf("Firmware install requested\r\n");
             printf("Authorization granted\r\n");
-            client.update_authorize(MbedCloudClient::UpdateRequestInstall);
+            _client->update_authorize(MbedCloudClient::UpdateRequestInstall);
             break;
 
         default:

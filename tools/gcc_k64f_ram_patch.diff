@@ -37,11 +37,11 @@ index b1ab4b7..f3e8f2c 100644
  const osThreadDef_t os_thread_def_##name = \
  { (name), (priority), 1, (stacksz), (os_thread_def_stack_##name) }
  #else
-diff --git a/targets/TARGET_Freescale/TARGET_MCUXpresso_MCUS/TARGET_MCU_K64F/device/TOOLCHAIN_GCC_ARM/MK64FN1M0xxx12.ld b/targets/TARGET_Freescale/TARGET_MCUXpresso_MCUS/TARGET_MCU_K64F/device/TOOLCHAIN_GCC_ARM/MK64FN1M0xxx12.ld
-index d775bfa..153f48c 100644
+diff --git a/targets/TARGET_Freescale/TARGET_MCUXpresso_MCUS/TARGET_MCU_K64F/device/TOOLCHAIN_GCC_ARM/MK64FN1M0xxx12.ld b/targets/TARGET_Freescale/TARGET_MCUXpr
+index 327e9de..06197ce 100644
 --- a/targets/TARGET_Freescale/TARGET_MCUXpresso_MCUS/TARGET_MCU_K64F/device/TOOLCHAIN_GCC_ARM/MK64FN1M0xxx12.ld
 +++ b/targets/TARGET_Freescale/TARGET_MCUXpresso_MCUS/TARGET_MCU_K64F/device/TOOLCHAIN_GCC_ARM/MK64FN1M0xxx12.ld
-@@ -227,6 +227,19 @@ SECTIONS
+@@ -241,6 +241,19 @@ SECTIONS
      __uvisor_bss_end = .;
    } > m_data
 
@@ -61,3 +61,5 @@ index d775bfa..153f48c 100644
    /* Heap space for the page allocator
    /* If uVisor shares the SRAM with the OS/app, ensure that this section is
     * the first one after the uVisor BSS section. Otherwise, ensure it is the
+
+
