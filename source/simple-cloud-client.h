@@ -486,7 +486,7 @@ private:
 
         // mbed Cloud 1.2 portal *always* puts "" around new values from a PUT... strip them off
         // @todo: remove this check when portal works properly
-        if (v.substr(0, 1) == "\"" && v.substr(v.size() - 1, 1) == "\"") {
+        if (v.size() > 1 && v.substr(0, 1) == "\"" && v.substr(v.size() - 1, 1) == "\"") {
             v = v.substr(1, v.size() - 2);
         }
 
