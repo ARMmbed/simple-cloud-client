@@ -484,6 +484,12 @@ private:
 
         string v = get(uri);
 
+        // mbed Cloud 1.2 portal *always* puts "" around new values from a PUT... strip them off
+        // @todo: remove this check when portal works properly
+        if (v.substr(0, 1) == "\"" && v.substr(v.size() - 1, 1) == "\"") {
+            v = v.substr(1, v.size() - 2);
+        }
+
         smc_debug_msg("[SMC] PUT came in for %s, new value is %s\n", uri.c_str(), v.c_str());
 
         if (v.empty()) return;
