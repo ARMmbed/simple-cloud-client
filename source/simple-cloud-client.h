@@ -110,7 +110,7 @@ static void mbed_cloud_error(int error_code) {
             error = "MbedCloudClient::UpdateWarningDeviceMismatch";
             break;
         case MbedCloudClient::UpdateWarningURINotFound:
-            error = "MbedCloudClient::UpdateWarningURINotFound";
+            error = "MbedCloudClient::UpdateWarningURINotFound - Often this is due to the internet connection being lost";
             break;
         case MbedCloudClient::UpdateWarningUnknown:
             error = "MbedCloudClient::UpdateWarningUnknown";
