@@ -28,7 +28,7 @@
 /* set flag to enable update support in mbed Cloud client */
 #define MBED_CLOUD_CLIENT_SUPPORT_UPDATE
 /* set download buffer size in bytes (min. 1024 bytes) */
-#define MBED_CLOUD_CLIENT_UPDATE_BUFFER          2*1024
+#define MBED_CLOUD_CLIENT_UPDATE_BUFFER          8*1024
 /* Developer flags for Update feature */
 #define MBED_CLOUD_DEV_UPDATE_CERT
 #define MBED_CLOUD_DEV_UPDATE_ID
