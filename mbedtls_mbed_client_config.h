@@ -15,10 +15,10 @@
 #ifndef MBEDTLS_CUSTOM_CONFIG_H
 #define MBEDTLS_CUSTOM_CONFIG_H
 
-/* Enable entropy for K64F and K22F. This means entropy is disabled for all other targets. */
+/* Enable entropy for known targets. This means entropy is disabled for all other targets. */
 /* Do **NOT** deploy this code in production on other targets! */
 /* See https://tls.mbed.org/kb/how-to/add-entropy-sources-to-entropy-pool */
-#if defined(TARGET_K64F) || defined(TARGET_K22F)
+#if defined(TARGET_K64F) || defined(TARGET_K22F) || defined(TARGET_UBLOX_EVK_ODIN_W2) || defined(TARGET_NUCLEO_F429ZI)
 #undef MBEDTLS_NO_DEFAULT_ENTROPY_SOURCES
 #undef MBEDTLS_TEST_NULL_ENTROPY
 #endif
