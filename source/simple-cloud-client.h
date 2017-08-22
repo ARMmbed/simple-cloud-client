@@ -110,7 +110,7 @@ static void mbed_cloud_error(int error_code) {
             error = "MbedCloudClient::UpdateWarningDeviceMismatch";
             break;
         case MbedCloudClient::UpdateWarningURINotFound:
-            error = "MbedCloudClient::UpdateWarningURINotFound";
+            error = "MbedCloudClient::UpdateWarningURINotFound - Often this is due to the internet connection being lost";
             break;
         case MbedCloudClient::UpdateWarningUnknown:
             error = "MbedCloudClient::UpdateWarningUnknown";
@@ -178,27 +178,16 @@ public:
             return false;
         }
 
-        // Resets storage to an empty state.
-        // Use this function when you want to clear storage from all the factory-tool generated data and user data.
-        // After this operation device must be injected again by using factory tool or developer certificate.
-    #ifdef RESET_STORAGE
-        smc_debug_msg("[SMC] Resets storage to an empty state\n");
-        fcc_status_e delete_status = fcc_storage_delete();
-        if (delete_status != FCC_STATUS_SUCCESS) {
-            smc_debug_msg("[SMC] Failed to delete storage - %d\n", delete_status);
-        }
-    #endif
+#ifdef RESET_STORAGE
+        reset_storage();
+#endif
 
-    #ifdef MBED_CONF_APP_DEVELOPER_MODE
-        smc_debug_msg("[SMC] Start developer flow\n");
-        status = fcc_developer_flow();
-        if (status == FCC_STATUS_KCM_FILE_EXIST_ERROR) {
-            smc_debug_msg("[SMC] Developer credentials already exists\n");
-        } else if (status != FCC_STATUS_SUCCESS) {
-            smc_debug_msg("[SMC] Failed to load developer credentials - exit\n");
+#ifdef MBED_CONF_APP_DEVELOPER_MODE
+        if (!start_developer_flow()) {
             return false;
         }
-    #endif
+#endif
+
         status = fcc_verify_device_configured_4mbed_cloud();
         if (status != FCC_STATUS_SUCCESS) {
             smc_debug_msg("[SMC] Device not configured for mbed Cloud - exit\n");
@@ -255,19 +244,14 @@ public:
             return false;
         }
 
-        // So this apparently only works if you set it after setup() was called...
 #ifdef MBED_CLOUD_CLIENT_SUPPORT_UPDATE
         /* Set callback functions for authorizing updates and monitoring progress.
-        Code is implemented in update_ui_example.cpp
-
-        Both callbacks are completely optional. If no authorization callback
-        is set, the update process will procede immediately in each step.
+           Code is implemented in update_ui_example.cpp
+           Both callbacks are completely optional. If no authorization callback
+           is set, the update process will procede immediately in each step.
         */
-#ifdef ARM_UPDATE_CLIENT_VERSION_VALUE
-#if ARM_UPDATE_CLIENT_VERSION_VALUE > 101000
+        update_ui_set_cloud_client(client);
         client->set_update_authorize_handler(&update_authorize);
-#endif
-#endif
         client->set_update_progress_handler(&update_progress);
 #endif
 
@@ -572,6 +556,30 @@ private:
         if (unregisteredCallback) {
             unregisteredCallback();
         }
+    }
+
+    void reset_storage() {
+        // Resets storage to an empty state.
+        // Use this function when you want to clear storage from all the factory-tool generated data and user data.
+        // After this operation device must be injected again by using factory tool or developer certificate.
+        smc_debug_msg("[SMC] Resets storage to an empty state\n");
+        fcc_status_e delete_status = fcc_storage_delete();
+        if (delete_status != FCC_STATUS_SUCCESS) {
+            smc_debug_msg("[SMC] Failed to delete storage - %d\n", delete_status);
+        }
+    }
+
+    bool start_developer_flow() {
+        smc_debug_msg("[SMC] Start developer flow\n");
+        fcc_status_e status = fcc_developer_flow();
+        if (status == FCC_STATUS_KCM_FILE_EXIST_ERROR) {
+            smc_debug_msg("[SMC] Developer credentials already exists\n");
+        } else if (status != FCC_STATUS_SUCCESS) {
+            smc_debug_msg("[SMC] Failed to load developer credentials - exit\n");
+            return false;
+        }
+
+        return true;
     }
 
     MbedCloudClient* client;
