@@ -34,7 +34,7 @@ This library is a simpler interface to mbed Cloud Client, making it trivial to e
     SimpleMbedClient client;
     SimpleResourceInt myResource = client.define_resource("3700/0/5501", 42);
 
-    void on_registered() {
+    void registered() {
         printf("Registered with mbed Cloud\n");
     }
 
