@@ -115,9 +115,15 @@ You can define functions, which do not have a value, but can just be invoked fro
 2.  `callback` - Function pointer which is invoked when the function is called. Takes in a pointer, which contains the data being passed in from the cloud.
 
 ```cpp
-void play(void* data) {
-    if (data) { // data can be NULL!
-        // cast it to something useful
+void play(void* params) {
+    if (params) { // data can be NULL!
+        M2MResource::M2MExecuteParameter* parameters = static_cast<M2MResource::M2MExecuteParameter*>(params);
+
+        // extract the data that was sent
+        const uint8_t* buffer = parameters->get_argument_value();
+        uint16_t length = parameters->get_argument_value_length();
+
+        // the buffer will be freed when you exit this function, so copy it if you need it later
     }
 }
 
