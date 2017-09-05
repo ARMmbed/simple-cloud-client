@@ -28,6 +28,8 @@
 #include "mbed-trace/mbed_trace.h"
 #include "mbed_cloud_client_user_config.h"
 #include "factory_configurator_client.h"
+#include "SDBlockDevice.h"
+#include "FATFileSystem.h"
 
 #ifdef MBED_CLOUD_CLIENT_SUPPORT_UPDATE
 #include "update_ui_example.h"
@@ -140,13 +142,20 @@ class SimpleMbedClientBase : public MbedCloudClientCallback {
 public:
 
     SimpleMbedClientBase(bool aDebug = true)
-        : evQueue(new EventQueue()), evThread(new Thread()), debug(aDebug)
+        : evQueue(new EventQueue()),
+          evThread(new Thread()),
+          debug(aDebug),
+          sd(MBED_CONF_SD_SPI_MOSI, MBED_CONF_SD_SPI_MISO, MBED_CONF_SD_SPI_CLK, MBED_CONF_SD_SPI_CS),
+          fs("sd", &sd)
     {
         evThread->start(callback(evQueue, &EventQueue::dispatch_forever));
     }
 
     SimpleMbedClientBase(EventQueue* aQueue, bool aDebug = true)
-        : evQueue(aQueue), debug(aDebug)
+        : evQueue(aQueue),
+          debug(aDebug),
+          sd(MBED_CONF_SD_SPI_MOSI, MBED_CONF_SD_SPI_MISO, MBED_CONF_SD_SPI_CLK, MBED_CONF_SD_SPI_CS),
+          fs("sd", &sd)
     {
 
     }
@@ -171,6 +180,12 @@ public:
 
     bool init(NetworkInterface* iface, struct MbedClientOptions options) {
         smc_debug_msg("[SMC] Initializing...\n");
+
+        int sd_ret = sd.init();
+        if(sd_ret != BD_ERROR_OK) {
+            smc_debug_msg("[SMC] sd.init() failed with %d! - exit\n", sd_ret);
+            return -1;
+        }
 
         fcc_status_e status = fcc_init();
         if(status != FCC_STATUS_SUCCESS) {
@@ -474,9 +489,7 @@ private:
             v = v.substr(1, v.size() - 2);
         }
 
-        smc_debug_msg("[SMC] PUT came in for %s, new value is %s\n", uri.c_str(), v.c_str());
-
-        if (v.empty()) return;
+        // smc_debug_msg("[SMC] PUT came in for %s, new value is %s\n", uri.c_str(), v.c_str());
 
         // Schedule this on the other thread, to avoid blocking this thread
         evQueue->call(callback(updateValues[uri], &SimpleResourceBase::update), v);
@@ -591,6 +604,8 @@ private:
     Thread*         evThread;
 
     bool debug;
+    SDBlockDevice sd;
+    FATFileSystem fs;
 
     map<string, SimpleResourceBase*> updateValues;
 
