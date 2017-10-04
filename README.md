@@ -132,7 +132,7 @@ client.define_function("music/0/play", &play);
 
 ### Accessing the underlying M2MResource
 
-If you need access to the underlying [M2MResource](https://docs.mbed.com/docs/mbed-client-guide/en/latest/api/classM2MResource.html) you can do so by calling `get_resource` on a variable, or by calling `client.get_resource` if it's a function.
+If you need access to the underlying [M2MResource](https://cloud.mbed.com/docs/v1.2/mbed-client/class_m2_m_resource.html) you can do so by calling `get_resource` on a variable, or by calling `client.get_resource` if it's a function.
 
 ```cpp
 SimpleResourceInt led = client.define_resource("led/0/value", true);
