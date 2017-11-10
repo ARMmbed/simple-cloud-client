@@ -30,6 +30,7 @@
 #include "factory_configurator_client.h"
 #include "SDBlockDevice.h"
 #include "FATFileSystem.h"
+#include "update_client_hub.h"
 
 #ifdef MBED_CLOUD_CLIENT_SUPPORT_UPDATE
 #include "update_ui_example.h"
@@ -180,6 +181,16 @@ public:
 
     bool init(NetworkInterface* iface, struct MbedClientOptions options) {
         smc_debug_msg("[SMC] Initializing...\n");
+
+#ifdef MBED_CLOUD_CLIENT_SUPPORT_UPDATE
+        extern const uint8_t arm_uc_vendor_id[];
+        extern const uint16_t arm_uc_vendor_id_size;
+        extern const uint8_t arm_uc_class_id[];
+        extern const uint16_t arm_uc_class_id_size;
+
+        ARM_UC_SetVendorId(arm_uc_vendor_id, arm_uc_vendor_id_size);
+        ARM_UC_SetClassId(arm_uc_class_id, arm_uc_class_id_size);
+#endif
 
         int sd_ret = sd.init();
         if(sd_ret != BD_ERROR_OK) {
