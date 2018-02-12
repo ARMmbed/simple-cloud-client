@@ -28,8 +28,6 @@
 #include "mbed-trace/mbed_trace.h"
 #include "mbed_cloud_client_user_config.h"
 #include "factory_configurator_client.h"
-#include "SDBlockDevice.h"
-#include "FATFileSystem.h"
 #include "update_client_hub.h"
 
 #ifdef MBED_CLOUD_CLIENT_SUPPORT_UPDATE
@@ -145,18 +143,14 @@ public:
     SimpleMbedClientBase(bool aDebug = true)
         : evQueue(new EventQueue()),
           evThread(new Thread()),
-          debug(aDebug),
-          sd(MBED_CONF_SD_SPI_MOSI, MBED_CONF_SD_SPI_MISO, MBED_CONF_SD_SPI_CLK, MBED_CONF_SD_SPI_CS),
-          fs("sd", &sd)
+          debug(aDebug)
     {
         evThread->start(callback(evQueue, &EventQueue::dispatch_forever));
     }
 
     SimpleMbedClientBase(EventQueue* aQueue, bool aDebug = true)
         : evQueue(aQueue),
-          debug(aDebug),
-          sd(MBED_CONF_SD_SPI_MOSI, MBED_CONF_SD_SPI_MISO, MBED_CONF_SD_SPI_CLK, MBED_CONF_SD_SPI_CS),
-          fs("sd", &sd)
+          debug(aDebug)
     {
 
     }
@@ -191,12 +185,6 @@ public:
         ARM_UC_SetVendorId(arm_uc_vendor_id, arm_uc_vendor_id_size);
         ARM_UC_SetClassId(arm_uc_class_id, arm_uc_class_id_size);
 #endif
-
-        int sd_ret = sd.init();
-        if(sd_ret != BD_ERROR_OK) {
-            smc_debug_msg("[SMC] sd.init() failed with %d! - exit\n", sd_ret);
-            return -1;
-        }
 
         fcc_status_e status = fcc_init();
         if(status != FCC_STATUS_SUCCESS) {
@@ -599,7 +587,7 @@ private:
         if (status == FCC_STATUS_KCM_FILE_EXIST_ERROR) {
             smc_debug_msg("[SMC] Developer credentials already exists\n");
         } else if (status != FCC_STATUS_SUCCESS) {
-            smc_debug_msg("[SMC] Failed to load developer credentials - exit\n");
+            smc_debug_msg("[SMC] Failed to load developer credentials... Is the storage layer working?\n");
             return false;
         }
 
@@ -615,8 +603,6 @@ private:
     Thread*         evThread;
 
     bool debug;
-    SDBlockDevice sd;
-    FATFileSystem fs;
 
     map<string, SimpleResourceBase*> updateValues;
 
