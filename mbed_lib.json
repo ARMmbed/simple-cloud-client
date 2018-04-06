@@ -1,13 +1,10 @@
 {
     "name": "simple-cloud-client",
     "macros": [
-        "MBEDTLS_USER_CONFIG_FILE=\"mbedtls_mbed_client_config.h\"",
+        "MBEDTLS_USER_CONFIG_FILE=\"mbedTLSConfig_mbedOS.h\"",
+        "PAL_USER_DEFINED_CONFIGURATION=\"sotp_fs_config_MbedOS.h\"",
         "MBED_CLIENT_USER_CONFIG_FILE=\"mbed_cloud_client_user_config.h\"",
-        "MBED_CLOUD_CLIENT_USER_CONFIG_FILE=\"mbed_cloud_client_user_config.h\"",
-        "MBEDTLS_NO_DEFAULT_ENTROPY_SOURCES",
-        "MBEDTLS_TEST_NULL_ENTROPY",
-        "PAL_USE_FATFS_SD=1",
-        "SA_PV_OS_MBEDOS"
+        "MBED_CLOUD_CLIENT_USER_CONFIG_FILE=\"mbed_cloud_client_user_config.h\""
     ],
     "target_overrides": {
         "*": {

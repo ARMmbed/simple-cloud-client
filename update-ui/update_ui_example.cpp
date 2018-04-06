@@ -97,7 +97,7 @@ void update_progress(uint32_t progress, uint32_t total)
 #endif
 
 /* only show progress bar if debug trace is disabled */
-#if !defined(MBED_CONF_MBED_TRACE_ENABLE) \
+#if (!defined(MBED_CONF_MBED_TRACE_ENABLE) || MBED_CONF_MBED_TRACE_ENABLE == 0) \
     && !ARM_UC_ALL_TRACE_ENABLE \
     && !ARM_UC_HUB_TRACE_ENABLE
 
