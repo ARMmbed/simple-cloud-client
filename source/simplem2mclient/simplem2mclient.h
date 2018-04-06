@@ -103,14 +103,14 @@ public:
         }
         else if (status != FCC_STATUS_SUCCESS)
         {
-            printf("Failed to load developer credentials - is the storage layer active and accessible?\n");
+            printf("Failed to load developer credentials - is the storage layer active and accessible? If you're using an SD card formatting should help - see also https://os.mbed.com/users/janjongboom/code/format-sd-card/\n");
             return 1;
         }
     #endif
         status = fcc_verify_device_configured_4mbed_cloud();
         if (status != FCC_STATUS_SUCCESS)
         {
-            printf("Device not configured for mbed Cloud - is the storage layer active and accessible?\n");
+            printf("Device not configured for mbed Cloud - is the storage layer active and accessible? If you're using an SD card formatting should help - see also https://os.mbed.com/users/janjongboom/code/format-sd-card/\n");
             return 1;
         }
 

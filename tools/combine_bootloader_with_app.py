@@ -23,6 +23,7 @@ import json
 import hashlib, zlib, struct
 import time
 import sys
+from intelhex import IntelHex
 
 '''
 define FIRMWARE_HEADER_MAGIC   0x5a51b3d4UL
@@ -131,42 +132,60 @@ def create_header(app_blob, firmwareVersion):
     return FirmwareHeader
 
 
-def combine(bootloader_blob, app_blob, app_offset, hdr_offset, output, version):
+def combine(bootloader_fn, app_fn, app_addr, hdr_addr, bootloader_addr, output_fn, version, no_bootloader):
+    ih = IntelHex()
 
-    # create header to go with the application binary
-    FirmwareHeader = create_header(app_blob, version)
+    bootloader_format = bootloader_fn.split('.')[-1]
 
-    # write the bootloader first
-    offset = 0
-    output.write(bootloader_blob)
-    offset += len(bootloader_blob)
-
-    # write the padding between bootloader and firmware header
-    output.write(b'\00' * (hdr_offset - offset))
-    offset += (hdr_offset - offset)
+    # write the bootloader
+    if not no_bootloader:
+        print("Using bootloader %s" % bootloader_fn)
+        if bootloader_format == 'hex':
+            print("Loading bootloader from hex file.")
+            ih.fromfile(bootloader_fn, format=bootloader_format)
+        elif bootloader_format == 'bin':
+            print("Loading bootloader to address 0x%08x." % bootloader_addr)
+            ih.loadbin(bootloader_fn, offset=bootloader_addr)
+        else:
+            print('Bootloader format can only be .bin or .hex')
+            exit(-1)
 
     # write firmware header
-    output.write(FirmwareHeader)
-    offset += len(FirmwareHeader)
-
-    # write padding between header and application
-    output.write(b'\00' * (app_offset - offset))
+    app_format=app_fn.split('.')[-1]
+    if app_format == 'bin':
+        with open(app_fn, 'rb') as fd:
+            app_blob = fd.read()
+    elif app_format == 'hex':
+        application = IntelHex(app_fn)
+        app_blob = application.tobinstr()
+    FirmwareHeader = create_header(app_blob, version)
+    print("Writing header to address 0x%08x." % hdr_addr)
+    ih.puts(hdr_addr, FirmwareHeader)
 
     # write the application
-    output.write(app_blob)
+    if app_format == 'bin':
+        print("Loading application to address 0x%08x." % app_addr)
+        ih.loadbin(app_fn, offset=app_addr)
+    elif app_format == 'hex':
+        print("Loading application from hex file")
+        ih.fromfile(app_fn, format=app_format)
+
+    # output to file
+    ih.tofile(output_fn, format=output_fn.split('.')[-1])
 
 
 if __name__ == '__main__':
+    from glob import glob
     import argparse
 
     parser = argparse.ArgumentParser(
         description='Combine bootloader with application adding metadata header.')
 
-    def offset_arg(s):
-        if s.startswith('0x'):
-            return int(s, 16)
-        else:
-            return int(s)
+    def addr_arg(s):
+        if not isinstance(s, int):
+            s = eval(s)
+
+        return s
 
     bin_map = {
         'k64f': {
@@ -182,28 +201,31 @@ if __name__ == '__main__':
 
     curdir = path.dirname(path.abspath(__file__))
 
-    def parse_mbed_app_offset(mcu, key):
+    def parse_mbed_app_addr(mcu, key):
         mem_start = bin_map[mcu]["mem_start"]
         with open(path.join(curdir, "..", "mbed_app.json")) as fd:
             mbed_json = json.load(fd)
-            offset = mbed_json["target_overrides"][mcu.upper()][key]
-            return offset_arg(offset) - offset_arg(mem_start)
+            addr = mbed_json["target_overrides"][mcu.upper()][key]
+            return addr_arg(addr)
 
     # specify arguments
     parser.add_argument('-m', '--mcu', type=lambda s : s.lower().replace("-","_"), required=False,
                         help='mcu', choices=bin_map.keys())
-    parser.add_argument('-b', '--bootloader',    type=argparse.FileType('rb'), required=False,
+    parser.add_argument('-b', '--bootloader',    type=argparse.FileType('rb'),     required=False,
                         help='path to the bootloader binary')
-    parser.add_argument('-a', '--app',           type=argparse.FileType('rb'), required=True,
+    parser.add_argument('-a', '--app',           type=argparse.FileType('rb'),     required=True,
                         help='path to application binary')
-    parser.add_argument('-c', '--app-offset',    type=offset_arg,              required=False,
-                        help='offset of the application')
-    parser.add_argument('-d', '--header-offset', type=offset_arg,              required=False,
-                        help='offset of the firmware metadata header')
-    parser.add_argument('-o', '--output',        type=argparse.FileType('wb'), required=True,
+    parser.add_argument('-c', '--app-addr',      type=addr_arg,                    required=False,
+                        help='address of the application')
+    parser.add_argument('-d', '--header-addr',   type=addr_arg,                    required=False,
+                        help='address of the firmware metadata header')
+    parser.add_argument('-o', '--output',        type=argparse.FileType('wb'),     required=True,
                         help='output combined file path')
-    parser.add_argument('-s', '--set-version',   type=int,                     required=False,
+    parser.add_argument('-s', '--set-version',   type=int,                         required=False,
                         help='set version number', default=int(time.time()))
+    parser.add_argument('-nb', '--no-bootloader',action='store_true',              required=False,
+                        help='Produce output without bootloader. The output only '+
+                             'contains header + app. requires hex output format')
 
     # workaround for http://bugs.python.org/issue9694
     parser._optionals.title = "arguments"
@@ -211,43 +233,83 @@ if __name__ == '__main__':
     # get and validate arguments
     args = parser.parse_args()
 
-    if(not (args.mcu or args.bootloader)):
-        print("Please specify bootloader location or MCU")
+    # validate the output format
+    f = args.output.name.split('.')[-1]
+    if f == 'hex':
+        output_format = 'hex'
+    elif f == 'bin':
+        output_format = 'bin'
+    else:
+        print('Output format can only be .bin or .hex')
         exit(-1)
 
-    fname = ''
-    if args.mcu:
-        fname = path.join(curdir, 'mbed-bootloader-' + args.mcu.replace('_', '-')+'.bin')
-        if not path.exists(fname):
-            print("Specified MCU does not have a binary in this location")
+    # validate no-bootloader option
+    if args.no_bootloader and output_format == 'bin':
+        print('--no-bootloader option requires the output format to be .hex')
+        exit(-1)
+
+    # validate that we can find a bootloader or no_bootloader is specified
+    bootloader = None
+    if not args.no_bootloader:
+        if args.mcu and not args.bootloader:
+            bl_list = glob("tools/mbed-bootloader-{}-*".format(args.mcu))
+            if len(bl_list) == 0:
+                print("Specified MCU does not have a binary in this location " + \
+                      "Please specify bootloader location with -b")
+                exit(-1)
+            elif len(bl_list) > 1:
+                print("Specified MCU have more than one binary in this location " + \
+                      "Please specify bootloader location with -b")
+                print(bl_list)
+                exit(-1)
+            else:
+                fname = bl_list[0]
+                bootloader = open(fname, 'rb')
+        elif args.bootloader:
+            bootloader = args.bootloader
+        elif not (args.mcu or args.bootloader):
+            print("Please specify bootloader location -b or MCU -m")
             exit(-1)
 
-    # Use specified bootloader or default if none is provided
-    bootloader = args.bootloader or open(fname, 'rb')
+    # get the path of bootloader, application and output
+    if bootloader:
+        bootloader_fn = path.abspath(bootloader.name)
+        bootloader.close()
+    else:
+        bootloader_fn = ''
 
-    # read the contents of bootloader and application binaries into buffers
-    bootloader_blob = bootloader.read()
-    bootloader.close()
-    app_blob = args.app.read()
+    if bootloader_fn.split('.')[-1] != 'hex' and not args.mcu:
+        print("Please provide a bootloader in hex format or specify MCU -m")
+        exit(-1)
+
+    app_fn = path.abspath(args.app.name)
     args.app.close()
-
-    # Use specified offsets or default if none are provided
-    if(not (args.mcu or args.app_offset)):
-        print("Please specify app offset or MCU")
-        exit(-1)
-    app_offset = args.app_offset or parse_mbed_app_offset(args.mcu, "target.mbed_app_start")
-
-    if(not (args.mcu or args.header_offset)):
-        print("Please specify header offset or MCU")
-        exit(-1)
-    header_offset = args.header_offset or parse_mbed_app_offset(args.mcu, "update-client.application-details")
-
-    # combine application and bootloader adding metadata info
-    combine(bootloader_blob, app_blob, app_offset, header_offset, args.output, args.set_version)
-
-    # close output file
     output_fn = path.abspath(args.output.name)
     args.output.close()
+
+    # Use specified addresses or default if none are provided
+    app_format = app_fn.split('.')[-1]
+    if(not (args.mcu or args.app_addr or app_format == 'hex')):
+        print("Please specify app address or MCU")
+        exit(-1)
+    if app_format != 'hex':
+        app_addr = args.app_addr or parse_mbed_app_addr(args.mcu, "target.mbed_app_start")
+    else:
+        app_addr = None
+
+    if args.mcu:
+        mem_start = addr_arg(bin_map[args.mcu]["mem_start"])
+    else:
+        mem_start = 0
+
+    if(not (args.mcu or args.header_addr)):
+        print("Please specify header address or MCU")
+        exit(-1)
+    header_addr = args.header_addr or parse_mbed_app_addr(args.mcu, "update-client.application-details")
+
+    # combine application and bootloader adding metadata info
+    combine(bootloader_fn, app_fn, app_addr, header_addr, mem_start,
+            output_fn, args.set_version, args.no_bootloader)
 
     # print the output file path
     print('Combined binary:' + output_fn)
