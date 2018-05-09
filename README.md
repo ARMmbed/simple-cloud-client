@@ -1,3 +1,7 @@
+# This library has been superseded by [simple-mbed-cloud-client](https://github.com/ARMmbed/simple-mbed-cloud-client)
+
+-
+
 ## Simple Cloud Client
 
 A sane and simple way of connecting mbed OS 5 devices to mbed Cloud. It's designed to:
